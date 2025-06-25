@@ -31,3 +31,9 @@
 #rail-map .leaflet-tile {
     opacity: 0.4 !important;
 }
+
+#bar-chart {
+    width: 600px;
+    height: 400px;
+    margin-top: 20px;
+}

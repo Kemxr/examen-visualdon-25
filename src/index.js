@@ -9,79 +9,80 @@ import "./style.css";  // Si vous avez besoin de styles CSS spécifiques
 ========================================================================================================================
 Vous pouvez dessiner la figure soit à partir d'ici ou directement dans l'HTML (index.html).
 */
+
 // 1. paramètres de base
 const width = 600;
 const height = 600;
 const svg = d3
-    .select("body")
-    .append("svg")
+  .select("#custom-drawing")
+  .append("svg")
     .attr("width", width)
     .attr("height", height)
-    // origine centrée
     .attr("viewBox", "-300 -300 600 600");
 
-// 2. points de l’hexagone régulier (rayon 200)
+// 2. points de l’hexagone régulier
 const hexagon = [
-    [0, -200],  // sommet top
-    [173.2, -100], // haut droite
-    [173.2, 100], // bas droite
-    [0, 200],  // sommet bottom corrigé
-    [-173.2, 100], // bas gauche
-    [-173.2, -100]  // haut gauche
+  [   0, -200],   
+  [173.2, -100], 
+  [173.2,  100], 
+  [   0,  200],  
+  [-173.2, 100], 
+  [-173.2,-100]  
 ];
 
 // 3. tracé de l’hexagone
 svg.append("polygon")
-    .attr("points", hexagon.map(d => d.join(",")).join(" "))
-    .attr("fill", "none")
-    .attr("stroke", "black")
-    .attr("stroke-width", 3);
+  .attr("points", hexagon.map(d => d.join(",")).join(" "))
+  .attr("fill", "none")
+  .attr("stroke", "black")
+  .attr("stroke-width", 3);
 
-// 4. carrés latéraux (taille 100), bord intérieur flush avec l’hexagone
-const squareSize = 100;
-const r = squareSize / 2;
+// 4. carrés latéraux 
+const squareSize = 50;
 const midSides = [
-    [-173.2 - r, -50],
-    [173.2 + r, -50]
+  [-200, -75],  
+  [ 200, -75]   
 ];
 
 midSides.forEach(([cx, cy]) => {
-    const pts = [
-        [cx - r, cy - r],
-        [cx + r, cy - r],
-        [cx + r, cy + r],
-        [cx - r, cy + r]
-    ];
-    svg.append("polygon")
-        .attr("points", pts.map(d => d.join(",")).join(" "))
-        .attr("fill", "none")
-        .attr("stroke", "black")
-        .attr("stroke-width", 3);
+  const r = squareSize / 2;
+  const pts = [
+    [cx - r, cy - r],
+    [cx + r, cy - r],
+    [cx + r, cy + r],
+    [cx - r, cy + r]
+  ];
+  svg.append("polygon")
+    .attr("points", pts.map(d => d.join(",")).join(" "))
+    .attr("fill", "none")
+    .attr("stroke", "black")
+    .attr("stroke-width", 3);
 });
 
-// 5. lignes rouges intérieures (du centre vers 3 sommets)
+// 5. lignes rouges intérieures
 const center = [0, 0];
 const targets = [
-    [0, -200],  // top
-    [173.2, 100], // bas droite
-    [-173.2, 100]  // bas gauche
+  [   0, -200],  
+  [173.2,  100], 
+  [-173.2, 100] 
 ];
 
 svg.selectAll(".radial")
-    .data(targets)
-    .enter()
-    .append("line")
+  .data(targets)
+  .enter()
+  .append("line")
     .attr("x1", center[0]).attr("y1", center[1])
     .attr("x2", d => d[0]).attr("y2", d => d[1])
     .attr("stroke", "red")
     .attr("stroke-width", 3);
 
-// 6. segment noir horizontal à l’intérieur (à y = 50px)
+// 6. segment noir horizontal à l’intérieur
 svg.append("line")
-    .attr("x1", -86).attr("y1", 50)
-    .attr("x2", 86).attr("y2", 50)
-    .attr("stroke", "black")
-    .attr("stroke-width", 3);
+  .attr("x1", -85).attr("y1",  50)
+  .attr("x2",  85).attr("y2",  50)
+  .attr("stroke", "black")
+  .attr("stroke-width", 3);
+
 
 
 
@@ -221,19 +222,59 @@ Promise.all([
     }
 
     L.geoJSON(network, { style: styleRail, onEachFeature: onEachRail }).addTo(railMap);
-    console.log(`L'amplitude des valeurs va de quelques unités à plus de 160'000 passagers.
+    console.log(`Réponse 3.2 : L'amplitude des valeurs va de quelques unités à plus de 160'000 passagers.
 Une échelle racine carrée pour l'épaisseur des lignes permet d'atténuer l'influence des très grands trafics tout en conservant une distinction lisible pour les petites valeurs.
-Pour la couleur, une échelle séquentielle de jaune à rouge (interpolateYlOrRd de D3) offre une progression perceptuellement ordonnée adaptée pour représenter une intensité croissante de trafic.`);
+Pour la couleur, une échelle séquentielle de jaune à rouge offre une progression ordonnée adaptée pour représenter une intensité croissante de trafic.`);
 
 
 
     // --- 3.3 Diagramme en bâtons ---
+    const top10Ratio = cantonFeatures
+        .map(d => ({
+            name: d.properties.name,
+            ratio: (d.properties.avg_daily_trafic / d.properties.population) * 10000
+        }))
+        .sort((a, b) => b.ratio - a.ratio)
+        .slice(0, 10);
 
+    const marginBar = { top: 20, right: 20, bottom: 30, left: 140 };
+    const widthBar = 600 - marginBar.left - marginBar.right;
+    const heightBar = 400 - marginBar.top - marginBar.bottom;
 
+    const svgBar = d3.select('#bar-chart')
+        .attr('width', widthBar + marginBar.left + marginBar.right)
+        .attr('height', heightBar + marginBar.top + marginBar.bottom);
 
+    const gBar = svgBar.append('g')
+        .attr('transform', `translate(${marginBar.left},${marginBar.top})`);
 
+    const x = d3.scaleLinear()
+        .domain([0, d3.max(top10Ratio, d => d.ratio)])
+        .range([0, widthBar]);
 
+    const y = d3.scaleBand()
+        .domain(top10Ratio.map(d => d.name))
+        .range([0, heightBar])
+        .padding(0.1);
 
+    gBar.append('g')
+        .call(d3.axisLeft(y));
 
+    gBar.append('g')
+        .attr('transform', `translate(0,${heightBar})`)
+        .call(d3.axisBottom(x));
 
+    gBar.selectAll('rect')
+        .data(top10Ratio)
+        .enter()
+        .append('rect')
+        .attr('y', d => y(d.name))
+        .attr('height', y.bandwidth())
+        .attr('x', 0)
+        .attr('width', 0)
+        .attr('fill', '#69b3a2')
+        .transition()
+        .duration(1000)
+        .ease(d3.easeCubicOut)
+        .attr('width', d => x(d.ratio));
 });
