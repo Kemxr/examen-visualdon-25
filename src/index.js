@@ -17,7 +17,7 @@ const svg = d3
   .append("svg")
     .attr("width", width)
     .attr("height", height)
-    // on centre l’origine au milieu du svg
+    // origine centrée
     .attr("viewBox", "-300 -300 600 600");
 
 // 2. points de l’hexagone régulier (rayon 200)
@@ -25,7 +25,7 @@ const hexagon = [
   [   0, -200],  // sommet top
   [173.2, -100], // haut droite
   [173.2,  100], // bas droite
-  [   0,  205],  // sommet bottom
+  [   0,  200],  // sommet bottom corrigé
   [-173.2, 100], // bas gauche
   [-173.2,-100]  // haut gauche
 ];
@@ -35,17 +35,17 @@ svg.append("polygon")
   .attr("points", hexagon.map(d => d.join(",")).join(" "))
   .attr("fill", "none")
   .attr("stroke", "black")
-  .attr("stroke-width", 5);
+  .attr("stroke-width", 3);
 
-// 4. carrés latéraux (taille 50) placés au milieu de chaque côté gauche/droit
-const squareSize = 50;
+// 4. carrés latéraux (taille 100), bord intérieur flush avec l’hexagone
+const squareSize = 100;  
+const r = squareSize / 2;
 const midSides = [
-  [-200, -75],  // milieu côté gauche
-  [ 200, -75]   // milieu côté droit
+  [-173.2 - r, -50],  
+  [ 173.2 + r, -50]
 ];
 
 midSides.forEach(([cx, cy]) => {
-  const r = squareSize / 2;
   const pts = [
     [cx - r, cy - r],
     [cx + r, cy - r],
@@ -56,7 +56,7 @@ midSides.forEach(([cx, cy]) => {
     .attr("points", pts.map(d => d.join(",")).join(" "))
     .attr("fill", "none")
     .attr("stroke", "black")
-    .attr("stroke-width", 5);
+    .attr("stroke-width", 3);
 });
 
 // 5. lignes rouges intérieures (du centre vers 3 sommets)
@@ -76,7 +76,7 @@ svg.selectAll(".radial")
     .attr("stroke", "red")
     .attr("stroke-width", 3);
 
-// 6. segment noir horizontal à l’intérieur (ajuster coords selon repère)
+// 6. segment noir horizontal à l’intérieur (à y = 50px)
 svg.append("line")
   .attr("x1", -86).attr("y1",  50)
   .attr("x2",  86).attr("y2",  50)
@@ -138,7 +138,51 @@ Promise.all([
 
     // --- 3.1 Carte choroplète ---
     // Affichez les cantons avec une couleur basée sur le nombre de passagers par 10'000 habitants
+    const map = L.map('map').setView([46.8, 8.3], 8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
 
+    const ratios = cantonFeatures.map(d => (d.properties.avg_daily_trafic / d.properties.population) * 10000);
+    const color = d3.scaleSequential(d3.interpolateBlues)
+        .domain([d3.min(ratios), d3.max(ratios)]);
+
+    function style(feature) {
+        const ratio = (feature.properties.avg_daily_trafic / feature.properties.population) * 10000;
+        return {
+            fillColor: color(ratio),
+            weight: 1,
+            color: '#333',
+            fillOpacity: 0.7
+        };
+    }
+
+    let geojson;
+    function onEachFeature(feature, layer) {
+        const ratio = (feature.properties.avg_daily_trafic / feature.properties.population) * 10000;
+        layer.bindTooltip(`<strong>${feature.properties.name}</strong><br>${ratio.toFixed(0)} passagers / 10'000 habitants`);
+        layer.on({
+            mouseover: (e) => e.target.setStyle({ weight: 3 }),
+            mouseout: (e) => geojson.resetStyle(e.target)
+        });
+    }
+
+    geojson = L.geoJSON(cantons, { style, onEachFeature }).addTo(map);
+
+    const legend = L.control({ position: 'bottomright' });
+    legend.onAdd = function () {
+        const div = L.DomUtil.create('div', 'legend');
+        const grades = color.ticks(5);
+        div.innerHTML += "<h4>Passagers / 10'000 hab.</h4>";
+        for (let i = 0; i < grades.length; i++) {
+            const from = grades[i];
+            const to = grades[i + 1];
+            div.innerHTML += '<i style="background:' + color(from + 0.0001) + ';width:18px;height:18px;display:inline-block;margin-right:8px;"></i> ' +
+                from.toFixed(0) + (to ? '&ndash;' + to.toFixed(0) + '<br>' : '+');
+        }
+        return div;
+    };
+    legend.addTo(map);
    
 
 
