@@ -3,6 +3,11 @@
     margin-top: 20px;
 }
 
+#rail-map {
+    height: 600px;
+    margin-top: 20px;
+}
+
 .leaflet-control .legend i {
     width: 18px;
     height: 18px;
@@ -21,4 +26,8 @@
     line-height: 18px;
     box-shadow: 0 0 15px rgba(0,0,0,0.2);
     border-radius: 5px;
+}
+
+#rail-map .leaflet-tile {
+    opacity: 0.4 !important;
 }
